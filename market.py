@@ -43,3 +43,44 @@ class Request(object):
         aux_dict = self.to_dict().copy()
         aux_dict[OrderKeys.size] = str(aux_dict[OrderKeys.size])
         return json.dumps(aux_dict)
+
+
+class Response(object):
+    def __init__(self, request, msg, status):
+        """
+        This class encapsulate all the possible responses the market can return
+        when processing a request object
+
+        :param Request request: The request order generating the response
+        :param bool status: True if the request order was executed, else False
+        :param str msg: A descriptive message of the happened
+        :return:
+        """
+        self.request = request
+        self.status = status
+        self.msg = msg
+
+    def was_executed(self):
+        """
+        Returns whether the req was or not processed successfull by the market.
+
+            A successfull request is a transaction that produced changes in the
+        orderbook.
+
+        :return bool: True if was processed, else other cases
+        """
+        return self.status
+
+    def get_event(self):
+        """
+        Returns the lobster event attached to this response.
+        :return: An integer with the event
+        """
+        return self.request.event
+
+    def __repr__(self):
+        if self.status:
+            return 'The following request:\n{0}\nwas SUCCESSFULLY ' \
+                   'executed. DESCR: {1}'.format(self.request, self.msg)
+        return 'The following request:\n{0}\nwas NOT SUCCESSFULLY executed.' \
+               ' REASON: {1}'.format(self.request, self.msg)
