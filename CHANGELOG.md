@@ -7,3 +7,4 @@ this project uses [Semantic Versioning](http://semver.org/).
 - Created the Market
 - Created the Market Request and Response objects
 - Created sketch for the orderBook class
+- Added the shape module
