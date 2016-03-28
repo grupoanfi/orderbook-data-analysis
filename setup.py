@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 setup(
-    name='ODA',
+    name='OrderbookData',
     version='1.0',
     description='OrderBook utilities',
     author='ANFI',
