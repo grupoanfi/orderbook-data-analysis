@@ -1,11 +1,11 @@
 from distutils.core import setup
 
 setup(
-    name='OrderbookData',
-    version='1.0',
-    description='OrderBook utilities',
+    name='oda',
+    version='1.0.0',
+    description='Utilities for the limit order book',
     author='ANFI',
-    author_email='grupoanfi@gmail.com',
+    author_email='camilo.grupoanfi@gmail.com',
     packages=['ODA', 'ODA.test'],
     license='OSI Approved',
     long_description=open('README.md').read(),
@@ -25,4 +25,3 @@ setup(
         'Topic :: Office/Business :: Financial',
     ]
 )
-
