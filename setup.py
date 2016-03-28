@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='ODA',
-    version='1.0.0',
+    version='1.0',
     description='OrderBook utilities',
     author='ANFI',
     author_email='grupoanfi@gmail.com',
