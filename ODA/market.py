@@ -3,7 +3,7 @@ import json
 from itertools import count
 from bisect import bisect_right
 
-from market_cols import OrderKeys, ExecutionResponse, LobsterEvents
+from market_cols import OrderKeys, ExecutionResponse, LobsterKeys
 from orderBook import Order
 
 __author__ = 'Grupo ANFI'
@@ -91,7 +91,7 @@ class Response(object):
 
 class Market(object):
     def __init__(self, market_type, conserv_id=True):
-        self.orders_queue = {1: [], -1: []}
+        self.orders_queue = {LobsterKeys.bid: [], LobsterKeys.ask: []}
         self.ids_generator = count()
         self.conserv_id = conserv_id
         self.market_type = market_type
@@ -102,7 +102,7 @@ class Market(object):
 
     @market_type.setter
     def market_type(self, market_type):
-        if market_type not in [-1, 1]:
+        if market_type not in [LobsterKeys.clean_price, LobsterKeys.dirty_price]:
             raise Exception('Mala la implementacion del tipo de mercado!!')
         self.__market_type = market_type
 
@@ -258,11 +258,11 @@ class Market(object):
                                if limit_order.group != req.group)
 
         # Fill or kill vs fill and kill
-        assert req.type in [-1, 1]
-        if req.type == -1 and available_volume < req.size:
+        assert req.type in [LobsterKeys.fill_and_kill, LobsterKeys.fill_or_kill]
+        if req.type == LobsterKeys.fill_or_kill and available_volume < req.size:
             return Response(req, ExecutionResponse.ORDERNOTFILLED, False)
             # return ExecutionResponse.ORDERNOTFILLED
-        elif req.type == 1 and available_volume == 0:
+        elif req.type == LobsterKeys.fill_and_kill and available_volume == 0:
             return Response(req, ExecutionResponse.NOTHINGTOTRADE, False)
 
         # Now, we fill the trades
@@ -339,15 +339,15 @@ class Market(object):
         """
         market_status = self.orders_queue.copy()
 
-        if req.event == LobsterEvents.add_limit_order:
+        if req.event == LobsterKeys.add_limit_order:
             res = self.execute_limit_order(req, self.conserv_id)
-        elif req.event == LobsterEvents.partial_cancellation:
+        elif req.event == LobsterKeys.partial_cancellation:
             res = self.execute_modification(req)
-        elif req.event == LobsterEvents.deletion:
+        elif req.event == LobsterKeys.deletion:
             res = self.execute_cancellation(req)
-        elif req.event == LobsterEvents.trade_visible:
+        elif req.event == LobsterKeys.trade_visible:
             res = self.execute_market_order(req)
-        elif req.event == LobsterEvents.halt_indicator:
+        elif req.event == LobsterKeys.halt_indicator:
             res = self.execute_end_market()
         else:
             raise NotImplementedError
@@ -359,9 +359,20 @@ class Market(object):
     def __repr__(self):
         """
         A little representation of the market by price
+
+        When market_type equals 1,  bid = -1 and ask = 1
+        When market_type equals -1, bid = 1 and ask = -1
+
+        thats because we have market_type * direction
         :return:
         """
-        bid = [o.price for o in self.orders_queue[1]]
-        ask = [o.price for o in self.orders_queue[-1]]
+        limit_orders = self.orders_queue
+
+        bid = [o.price for o in reversed(limit_orders[self.market_type * LobsterKeys.bid])]
+        ask = [o.price for o in limit_orders[self.market_type * LobsterKeys.ask]]
 
         return json.dumps(bid) + "|" + json.dumps(ask)
+
+if __name__ == '__main__':
+    m = Market(1)
+

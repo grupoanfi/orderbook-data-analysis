@@ -2,12 +2,21 @@
 __author__ = 'Grupo Anfi'
 
 
-class LobsterEvents(object):
+class LobsterKeys(object):
     """
     This class defines the possible events that can be executed by the market,
     the program adopts the lobster reference for these events, for more information
     about, please visit https://lobsterdata.com/info/DataStructure.php
     """
+    fill_and_kill = 1
+    fill_or_kill = -1
+
+    clean_price = 1
+    dirty_price = -1
+
+    bid = 1
+    ask = -1
+
     add_limit_order = 1
     partial_cancellation = 2
     deletion = 3
