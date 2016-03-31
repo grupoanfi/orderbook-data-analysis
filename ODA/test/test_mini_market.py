@@ -7,6 +7,46 @@ import random
 import pandas as pd
 from ODA.market import Market, Request
 
+req_ask1 = {
+    OrderKeys.size: 1000,
+    OrderKeys.direction: -1,
+    OrderKeys.price: 1600,
+    OrderKeys.id_user: 'juanqui',
+    OrderKeys.group: 'Bancolombia',
+    OrderKeys.event: 1,
+    OrderKeys.id_order: 1
+}
+
+req_ask2 = {
+    OrderKeys.size: 1000,
+    OrderKeys.direction: -1,
+    OrderKeys.price: 1500,
+    OrderKeys.id_user: 'juanqui',
+    OrderKeys.group: 'Bancolombia',
+    OrderKeys.event: 1,
+    OrderKeys.id_order: 2
+}
+
+req_bid1 = {
+    OrderKeys.size: 1000,
+    OrderKeys.direction: 1,
+    OrderKeys.price: 1400,
+    OrderKeys.id_user: 'juanqui',
+    OrderKeys.group: 'Bancolombia',
+    OrderKeys.event: 1,
+    OrderKeys.id_order: 3
+}
+
+req_bid2 = {
+    OrderKeys.size: 1000,
+    OrderKeys.direction: 1,
+    OrderKeys.price: 1300,
+    OrderKeys.id_user: 'juanqui',
+    OrderKeys.group: 'Bancolombia',
+    OrderKeys.event: 1,
+    OrderKeys.id_order: 4
+}
+
 
 class TestMiniMArket(unittest.TestCase):
     def setUp(self):
@@ -19,7 +59,6 @@ class TestMiniMArket(unittest.TestCase):
         # print df
         # #print self.my_mini_market.orders_queue
         pass
-
 
     def test_order_ask(self):
 
@@ -254,9 +293,89 @@ class TestMiniMArket(unittest.TestCase):
                 self.assertEqual(vol_last_trader_before - vol_excedent,
                              last_trader.size)
 
+    def test_repr_market(self):
+        """
+        This test only check the __repr__ method for the market with
+        a deterministic number of orders
+        :return:
+        """
+        res1 = self.my_mini_market.execute_request(Request(**req_bid1))
+        res2 = self.my_mini_market.execute_request(Request(**req_bid2))
+        res3 = self.my_mini_market.execute_request(Request(**req_ask1))
+        res4 = self.my_mini_market.execute_request(Request(**req_ask2))
 
+        s = str(self.my_mini_market)
+        print s
 
+        l = "[1300, 1400]|[1500, 1600]"
+        self.assertEqual(l, s, msg="El mercado {0} no coincide con {1}".format(s, l))
 
+    def test_allowed_price(self):
+        """
+        This test setup the market with the following form
+        "[1300, 1400]|[1500, 1600]", then tries to add bad orders, a bid order
+        between the price of ask orders and viceversa
+        also bid order exceding the tip of ask and viceversa
+        the market can not execute this orders with the message
+        'Limit order set at price excedding the tip'
+        :return:
+        """
+        res1 = self.my_mini_market.execute_request(Request(**req_bid1))
+        res2 = self.my_mini_market.execute_request(Request(**req_bid2))
+        res3 = self.my_mini_market.execute_request(Request(**req_ask1))
+        res4 = self.my_mini_market.execute_request(Request(**req_ask2))
+
+        bad_req_middle_left = {
+            OrderKeys.size: 1000,
+            OrderKeys.direction: -1,
+            OrderKeys.price: 1350,
+            OrderKeys.id_user: 'juanqui',
+            OrderKeys.group: 'Bancolombia',
+            OrderKeys.event: 1,
+            OrderKeys.id_order: 5
+        }
+
+        bad_req_middle_rigth = {
+            OrderKeys.size: 1000,
+            OrderKeys.direction: 1,
+            OrderKeys.price: 1550,
+            OrderKeys.id_user: 'juanqui',
+            OrderKeys.group: 'Bancolombia',
+            OrderKeys.event: 1,
+            OrderKeys.id_order: 5
+        }
+
+        bad_req_left = {
+            OrderKeys.size: 1000,
+            OrderKeys.direction: -1,
+            OrderKeys.price: 1350,
+            OrderKeys.id_user: 'juanqui',
+            OrderKeys.group: 'Bancolombia',
+            OrderKeys.event: 1,
+            OrderKeys.id_order: 6
+        }
+
+        bad_req_rigth = {
+            OrderKeys.size: 1000,
+            OrderKeys.direction: 1,
+            OrderKeys.price: 1750,
+            OrderKeys.id_user: 'juanqui',
+            OrderKeys.group: 'Bancolombia',
+            OrderKeys.event: 1,
+            OrderKeys.id_order: 7
+        }
+
+        res6 = self.my_mini_market.execute_request(Request(**bad_req_middle_left))
+        res7 = self.my_mini_market.execute_request(Request(**bad_req_middle_rigth))
+        res8 = self.my_mini_market.execute_request(Request(**bad_req_left))
+        res9 = self.my_mini_market.execute_request(Request(**bad_req_rigth))
+
+        responses = [res6.msg, res7.msg, res8.msg, res9.msg]
+
+        for r in responses:
+            self.assertEqual(r, ExecutionResponse.LIMITPRICEINVALID,
+                             msg="The market response is {0} and should be {1}".
+                                 format(r, ExecutionResponse.LIMITPRICEINVALID))
 
 
 
