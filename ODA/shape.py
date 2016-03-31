@@ -1,20 +1,22 @@
+# coding: utf-8
+__author__ = 'Math'
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import random
-from scipy.interpolate import interp1d, PchipInterpolator
+from scipy.interpolate import interp1d, PchipInterpolator, splrep, splev
 import matplotlib.patches as patches
 import matplotlib.path as path
+import matplotlib as mpl
 from mpltools import style
+from scipy.stats import gaussian_kde
 
-__author__ = 'Math'
 
-style.use('dark_background')
-
+mpl.rc("figure", facecolor="white")
 
 def generate_domain_line(points_ask, points_bid):
     """
-
     :param points_ask:
     :param points_bid:
     :return:
@@ -36,6 +38,30 @@ def generate_domain_line(points_ask, points_bid):
     return all_points_y
 
 
+def gaussian_kenel():
+    def f(x):
+        return 1.0/np.sqrt(2*np.pi)*np.exp(-1.0/2*x**2)
+
+    return f
+
+
+class kernelhandler(object):
+    def __init__(self, x, bandwidth):
+        self.bandwidth = bandwidth
+        self.x = x
+        self.l = None
+
+    def __call__(self, *args, **kwargs):
+        x = kwargs['x']
+        if kwargs['kernel'] == 'gauss':
+            print 'entro'
+            f = gaussian_kenel()
+            self.l = [f((x - x_i)*1.0/self.bandwidth) for x_i in self.x]
+            print self.l, [(x - x_i)*1.0/self.bandwidth for x_i in self.x]
+        return (1.0/len(self.x)*self.bandwidth)*sum(self.l)
+
+
+
 class Shape(object):
     def __init__(self, data, size_k):
         """
@@ -47,60 +73,81 @@ class Shape(object):
         self.data = data
         self.__fig = None
         self.__ax = None
-        self.__line = None
+        self.__line_bid = None
+        self.__line_ask = None
         self.__scat = None
         self.__patch_ask = None
         self.__patch_bid = None
         self.ticks = 500
         self.size_k = size_k
         self.__vert_ask = None
-        self.__codes= None
+        self.__codes = None
         self.__vert_bid = None
         self.__cargando_figuras()
 
     def __domain_normalizade(self, p_bid, p_ask):
         """
-
         :param p_bid:
         :param p_ask:
         :return:
         """
         return range(-len(p_bid), len(p_ask) + 1)
 
+    def __bid_normalizade(self, p_bid):
+        return range(-len(p_bid), 0)
+
+    @staticmethod
+    def __ask_normalizade(p_ask):
+        return range(1, len(p_ask) + 1)
+
     def __cargando_figuras(self):
         """
-
         :return:
         """
         self.__fig, self.__ax = plt.subplots()
-        self.__line, = self.__ax.plot([], [], lw=5, c='blue')
-        self.__scat = self.__ax.scatter([], [], c='black')
+        self.__line_bid, = self.__ax.plot([], [], lw=1, c='#286090')
+        self.__line_ask, = self.__ax.plot([], [], lw=1, c='#286090')
+        self.__scat = self.__ax.scatter([], [], c='black', s=2)
 
         self.__ax.set_ylim(-1, 30)
         self.__ax.set_xlim(-6, 6)
-        self.__ax.grid()
+        self.__ax.grid(linestyle='-', color='#808080', alpha=0.2)
 
-        self.__vert_ask = [[(float(x) + 0.5, 0.), (float(x) + 0.5, 0.)] for x in range(self.size_k + 1)]
+        f = lambda x: [(float(x) + 0.5, 0.), (float(x) + 0.5, 0.)]
+        self.__vert_ask = [f(x) for x in xrange(self.size_k + 1)]
         self.__vert_ask = np.array(sum(self.__vert_ask, []))
 
-        self.__vert_bid = [[(float(x) - 0.5, 0.), (float(x) - 0.5, 0.)] for x in range(-(self.size_k), 1)]
+        self.__vert_bid = [[(float(x) - 0.5, 0.), (float(x) - 0.5, 0.)] for x in xrange(-(self.size_k), 1)]
         self.__vert_bid = np.array(sum(self.__vert_bid, []))
 
-        self.__codes = [path.Path.LINETO for i in xrange(len(self.__vert_ask))]
+        self.__codes = [path.Path.LINETO for _ in xrange(len(self.__vert_ask))]
         self.__codes[0] = path.Path.MOVETO
         self.__codes = np.array(self.__codes)
 
         barpath_ask = path.Path(self.__vert_ask, self.__codes)
-        self.__patch_ask = patches.PathPatch(barpath_ask, facecolor='green', edgecolor='yellow', alpha=0.4)
+        self.__patch_ask = patches.PathPatch(barpath_ask, facecolor='#5cb85c',
+                                             edgecolor='#4cae4c', alpha=0.5)
         self.__ax.add_patch(self.__patch_ask)
 
         barpath_bid = path.Path(self.__vert_bid, self.__codes)
-        self.__patch_bid = patches.PathPatch(barpath_bid, facecolor='red', edgecolor='yellow', alpha=0.4)
+        self.__patch_bid = patches.PathPatch(barpath_bid, facecolor='#c9302c',
+                                             edgecolor='#ac2925', alpha=0.5)
         self.__ax.add_patch(self.__patch_bid)
+
+        # Se eliminan los ticks
+        self.__ax.tick_params(width=0)
+
+        # Se eliminan ejes
+        self.__ax.spines["top"].set_visible(False)
+        self.__ax.spines["right"].set_visible(False)
+        self.__ax.spines["bottom"].set_visible(False)
+        self.__ax.spines["left"].set_visible(False)
+
+        self.__ax.tick_params(axis='x', colors='#404040')
+        self.__ax.tick_params(axis='y', colors='#404040')
 
     def __update_limits_x(self, domain):
         """
-
         :param domain:
         :return:
         """
@@ -172,9 +219,13 @@ class Shape(object):
         :param y:
         :return:
         """
-        # f = PchipInterpolator(x,y, extrapolate=True)
-        f = interp1d(x, y, kind=3)
+        f = PchipInterpolator(x,y, extrapolate=True)
+        # f = interp1d(x, y, kind=3)
+        k = kernelhandler(y,10)
+        # tck = splrep(x,y, s=20, k=3)
         domain = np.linspace(x[0], x[-1], num=self.ticks, endpoint=True)
+        # y2 = splev(domain, tck)
+        # return y2
         return [f(a) for a in domain]
 
     def __generator_data(self):
@@ -185,15 +236,25 @@ class Shape(object):
 
         for orderbook in self.data:
 
-            p_ask = [data[1] for data in orderbook[-1]]
-            p_bid = [data[1] for data in orderbook[1]]
+            x_ask = [data[1] for data in orderbook[-1]]
+            x_bid = [data[1] for data in orderbook[1]]
 
-            all_poinst_y = generate_domain_line(orderbook[-1], orderbook[1])
-            all_poinst_x = self.__domain_normalizade(p_bid, p_ask)
+            y_ask = [data[1] for data in orderbook[-1]]
+            y_bid = [data[1] for data in orderbook[1]]
 
-            assert all_poinst_y[-len(p_ask):] == p_ask
+            # y_bid.reverse()
 
-            yield self.__interpolate_data(all_poinst_x, all_poinst_y), all_poinst_x, all_poinst_y, p_ask, p_bid
+            x_ask_norm = self.__ask_normalizade(x_ask)
+            x_bid_norm = self.__bid_normalizade(x_bid)
+
+            # all_poinst_y = generate_domain_line(orderbook[-1], orderbook[1])
+            # all_poinst_x = self.__domain_normalizade(p_bid, p_ask)
+
+            # assert all_poinst_y[-len(p_ask):] == p_ask
+
+            yield self.__interpolate_data(x_ask_norm, y_ask), self.__interpolate_data(x_bid_norm, y_bid), x_ask_norm, x_bid_norm, y_ask, y_bid
+
+            # yield self.__interpolate_data(all_poinst_x, all_poinst_y), all_poinst_x, all_poinst_y, p_ask, p_bid
 
     def __run_data(self, data):
         """
@@ -201,36 +262,49 @@ class Shape(object):
         :param data:
         :return:
         """
-        inter_points, domain, rango, p_ask, p_bid = data
+        ask_inter_points, bid_inter_points, x_ask, x_bid, y_ask, y_bid = data
 
-        self.__update_limits_x(domain)
-        self.__update_limits_y(inter_points)
+        bid_inter_points.reverse()
 
-        self.__line.set_data(np.linspace(domain[0], domain[-1], num=self.ticks, endpoint=True), inter_points)
-        self.__scat.set_offsets(np.array(zip(domain, rango)))
+        self.__update_limits_x(x_ask + x_bid)
+        self.__update_limits_y(ask_inter_points + bid_inter_points)
 
-        for x, point in enumerate(p_ask):
+        self.__line_bid.set_data(np.linspace(x_bid[0], x_bid[-1], num=self.ticks, endpoint=True), bid_inter_points)
+        self.__line_ask.set_data(np.linspace(x_ask[0], x_ask[-1], num=self.ticks, endpoint=True), ask_inter_points)
+
+        bid_copy = y_bid[:]
+        bid_copy.reverse()
+
+        self.__scat.set_offsets(np.array(zip(x_bid + x_ask, bid_copy + y_ask)))
+
+        for x, point in enumerate(y_ask):
             self.__vert_ask[x*2+1][1] = point
             self.__vert_ask[x*2+2][1] = point
 
-        for x in xrange(len(p_ask), self.size_k):
+        for x in xrange(len(y_ask), self.size_k):
             self.__vert_ask[x*2+1][1] = 0
             self.__vert_ask[x*2+2][1] = 0
 
         a = len(self.__vert_bid) - 1
-        for x, point in enumerate(p_bid):
+        for x, point in enumerate(y_bid):
             self.__vert_bid[a-(x*2+1)][1] = point
             self.__vert_bid[a-(x*2+2)][1] = point
 
-        for x in xrange(len(p_bid), self.size_k):
+        for x in xrange(len(y_bid), self.size_k):
             self.__vert_bid[a-(x*2+1)][1] = 0
             self.__vert_bid[a-(x*2+2)][1] = 0
 
-        return [self.__patch_ask, self.__patch_bid,self.__line, self.__scat,]
+        return [self.__patch_ask, self.__patch_bid,self.__line_bid, self.__line_ask,self.__scat,]
 
     def __call__(self, *args, **kwargs):
-        ani = animation.FuncAnimation(self.__fig, self.__run_data, self.__generator_data, blit=True, interval=60, repeat=False)
+        ani = animation.FuncAnimation(self.__fig, self.__run_data, self.__generator_data, blit=True, interval=100, repeat=False)
         plt.show()
+
+
+class ShapeNornal(Shape):
+    def __init__(self, data, size_k, normal):
+        super(ShapeNornal, self). __init__(data, size_k)
+        self.normal = normal
 
 
 def generar_orderbook_lines(n_lines):
@@ -244,7 +318,7 @@ def generar_orderbook_lines(n_lines):
         bid = [(random.random() * 8 + 1, random.random() * 5 + 1) for i in xrange(n_bid)]
 
         lines.append({-1: ask, 1: bid})
-    print  lines
+    print lines
     return lines
 
 if __name__ == '__main__':
