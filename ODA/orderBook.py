@@ -40,34 +40,64 @@ class Order(object):
     """
 
     __slots__ = [OrderKeys.direction, OrderKeys.id_user, OrderKeys.price,
-                 OrderKeys.id_order, OrderKeys.group, OrderKeys.size,
-                 OrderKeys.market_type]
+                 OrderKeys.id_order, OrderKeys.group, OrderKeys.size]
 
     def __init__(self, **kwargs):
         for key in self.__slots__:
             setattr(self, key, kwargs[key])
 
     def to_dict(self):
+        """
+        Collects in a raw dictionary the attributes of the order.
+
+        :return: Dictionary with the attributes
+        """
         return {k: getattr(self, k) for k in self.__slots__}
 
+    def __eq__(self, other):
+        """
+        Defines the equality between who orders
+        :param Order other: The another order to compare
+        :return bool: True if the orders are equals else False
+        """
+        checks = [getattr(self, k) == getattr(other, k) for k in self.__slots__]
+        return all(checks)
+
     def __le__(self, other):
-        return self.market_type * self.direction * (self.price - other.price) >= 0
+        # TODO document this overload of <
+        market_type = SharedValues.market_type
+        return market_type * self.direction * (self.price - other.price) >= 0
 
     def __lt__(self, other):
-        return self.market_type * self.direction * (self.price - other.price) > 0
+        # TODO document this overload of <=
+        market_type = SharedValues.market_type
+        return market_type * self.direction * (self.price - other.price) > 0
 
     def __repr__(self):
-        return 'Order<direction={0}, id_order={1}, price={2}, size={3}'.\
-            format(self.direction, self.id_order, self.price, self.price)
+        market_type = SharedValues.market_type
+        str_direction = LobsterKeys.mapper_direction[market_type * self.direction]
+        return 'Order<side={0}, id={1}, price={2}, size={3}>'.\
+            format(str_direction, self.id_order, self.price, self.size)
+
+    def to_json(self):
+        """
+        JSON representation of an order.
+
+        :return: The string representation of the order in JSON format
+        """
+        return json.dumps(self.to_dict())
 
 
 class Level(object):
-    __slots__ = [OrderKeys.direction, OrderKeys.price, 'orders']
+    name_orders = 'orders'
+    __slots__ = [OrderKeys.direction, OrderKeys.price, name_orders]
 
-    def __init__(self, direction, price, orders):
+    def __init__(self, direction, price, orders=None):
         self.direction = direction
         self.price = price
-        self.orders = orders
+
+        assert type(orders) is list
+        self.orders = list() if orders is None else orders
 
     def add_limit_order(self, order):
         """
@@ -75,21 +105,44 @@ class Level(object):
         :param Order order: The limit order to add
         """
         assert order.price == self.price
-        self.orders.append(order)
+        self.orders.append(copy(order))
 
     def get_ordered_level(self):
         """
         Returns the level ordered by time
         """
-        copy = list(self.orders)
-        copy.sort(key=lambda o: o.time)
-        return copy
+        _copy = list(self.orders)
+        _copy.sort(key=lambda o: o.time)
+        return _copy
+
+    def __repr__(self):
+        orders = map(lambda x: x.id_order, self.orders)
+        return json.dumps([self.price, orders])
+
+    def __eq__(self, other):
+        """
+        This function defines the equality between two objects of the Level class
+
+        :param Level other: Level object to compare with
+        :return: True if the instances are equal else false
+        """
+        assert isinstance(other, Level)
+        checks = list()
+        checks.append(self.price == other.price)
+        checks.append(len(self.orders) == len(other.orders))
+
+        for i in xrange(len(self.orders)):
+            checks.append(self.orders[i] == other.orders[i])
+
+        return all(checks)
 
     def __le__(self, other):
-        return self.price <= other.price
+        market_type = SharedValues.market_type
+        return market_type * self.direction * (self.price - other.price) >= 0
 
     def __lt__(self, other):
-        return self.price < other.price
+        market_type = SharedValues.market_type
+        return market_type * self.direction * (self.price - other.price) > 0
 
 
 class OrderBookLine(object):
