@@ -1,6 +1,36 @@
-from market_cols import OrderKeys
+import json
+
+from market_cols import OrderKeys, LobsterKeys, SharedValues
+from copy import copy
 
 __author__ = 'Math'
+
+
+def orders2levels(orders_queue):
+    """
+    This method takes a dict of the form {1: [list of orders], -1: [list of orders]}
+    and forms the orderbook by levels {1: [list of levels], -1:[list of levels]}
+
+    assumes order by priority inside the list of orders
+
+    :param dict orders_queue: Dictionary with the orders to parse
+    :return:
+    :rtype: dict of levels
+    """
+    levels = {LobsterKeys.bid: list(), LobsterKeys.ask: list()}
+
+    for direction, list_orders in orders_queue.iteritems():
+        if list_orders:
+            curr = list_orders[0]
+            levels[direction].append(Level(direction, curr.price, [curr]))
+            for order in list_orders[1:]:
+                if curr < order:
+                    level = Level(direction, order.price, [order])
+                    levels[direction].append(level)
+                    curr = order
+                else:
+                    levels[direction][-1].add_limit_order(order)
+    return levels
 
 
 class Order(object):
