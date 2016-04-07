@@ -121,7 +121,7 @@ class Shape(object):
         self.__ax.tick_params(axis='x', colors='#404040')
         self.__ax.tick_params(axis='y', colors='#404040')
 
-        self.anot =  self.__ax.text(0.02, 0.95, '', transform=self.__ax.transAxes)
+        self.anot = self.__ax.text(0.02, 0.95, '', transform=self.__ax.transAxes)
 
 
     def __update_limits_x(self, domain):
