@@ -16,6 +16,7 @@ class LobsterKeys(object):
 
     bid = 1
     ask = -1
+    mapper_direction = {bid: 'BID', ask: 'ASK'}
 
     add_limit_order = 1
     partial_cancellation = 2
@@ -26,6 +27,9 @@ class LobsterKeys(object):
 
     events = [add_limit_order, partial_cancellation, deletion, trade_visible,
               trade_hidden, halt_indicator]
+
+    directions = [ask, bid]
+    types = [fill_or_kill, fill_and_kill]
 
 
 class OrderKeys(object):
@@ -46,6 +50,14 @@ class OrderKeys(object):
     requestkeys = [direction, event, group, id_order, id_user, price, size, type,
                    time]
     executionkeys = [direction, event, group, id_order, id_user, price, size, time]
+
+
+class SharedValues(object):
+    """
+    global configuration for the market
+    """
+    conserv_ids = True
+    market_type = LobsterKeys.clean_price
 
 
 class ExecutionResponse(object):

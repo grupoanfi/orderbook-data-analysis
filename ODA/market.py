@@ -3,7 +3,7 @@ import json
 from itertools import count
 from bisect import bisect_right
 
-from market_cols import OrderKeys, ExecutionResponse, LobsterKeys
+from market_cols import OrderKeys, ExecutionResponse, LobsterKeys, SharedValues
 from orderBook import Order
 
 __author__ = 'Grupo ANFI'
@@ -90,11 +90,11 @@ class Response(object):
 
 
 class Market(object):
-    def __init__(self, market_type, conserv_id=True):
+    def __init__(self, conserv_id=True):
         self.orders_queue = {LobsterKeys.bid: [], LobsterKeys.ask: []}
         self.ids_generator = count()
         self.conserv_id = conserv_id
-        self.market_type = market_type
+        self.market_type = SharedValues.market_type
 
     @property
     def market_type(self):
@@ -103,7 +103,7 @@ class Market(object):
     @market_type.setter
     def market_type(self, market_type):
         if market_type not in [LobsterKeys.clean_price, LobsterKeys.dirty_price]:
-            raise Exception('Mala la implementacion del tipo de mercado!!')
+            raise Exception('market_type not in [1, -1]!!!')
         self.__market_type = market_type
 
     def best_order(self, direction):
@@ -359,11 +359,6 @@ class Market(object):
     def __repr__(self):
         """
         A little representation of the market by price
-
-        When market_type equals 1,  bid = -1 and ask = 1
-        When market_type equals -1, bid = 1 and ask = -1
-
-        thats because we have market_type * direction
         :return:
         """
         limit_orders = self.orders_queue
@@ -374,5 +369,5 @@ class Market(object):
         return json.dumps(bid) + "|" + json.dumps(ask)
 
 if __name__ == '__main__':
-    m = Market(1)
+    m = Market()
 
