@@ -450,10 +450,10 @@ def generar_orderbook_lines(n_lines):
 if __name__ == '__main__':
     lines = generar_orderbook_lines(500)
 
-    levels = levels_to_shape(lines, 10)
-    levels.distance_to_midprice()
-    # levels.distance_to_extreme()
-    levels.draw_shape()
+    shape_orderbook = levels_to_shape(lines, 10)
+    # levels.distance_to_midprice()
+    shape_orderbook.distance_to_extreme()
+    shape_orderbook.draw_shape()
 
     # l = [(i, random.random()) for i in xrange(10)]
     # k = kernelhandler(l, 0.5)
